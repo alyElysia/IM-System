@@ -52,9 +52,25 @@ func (this *User) Offline() {
 	this.server.BroadCast(this, "already offline~")
 }
 
+// 给当前用户对应的客户端发送消息
+func (this *User) SendMsg(msg string) {
+	this.Conn.Write([]byte(msg))
+}
+
 //处理消息业务
 func (this *User) DoMsg(msg string) {
-	this.server.BroadCast(this, msg)
+	if msg == "who" {
+		// 查询当前在线的用户
+		this.server.mapLock.Lock()
+		for _, user := range this.server.OnlineMap {
+			onlineMsg := "(" + user.Addr + ":" + user.Name + "),在线...\n"
+			this.SendMsg(onlineMsg)
+		}
+
+		this.server.mapLock.Unlock()
+	} else {
+		this.server.BroadCast(this, msg)
+	}
 }
 
 // 监听当前user通道的方法，一旦有消息就发送给客户端
