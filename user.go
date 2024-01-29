@@ -71,7 +71,7 @@ func (this *User) DoMsg(msg string) {
 		}
 
 		this.server.mapLock.Unlock()
-	} else if len(msg) > 7 && msg == "rename|" { //约定重命名格式：rename|newName
+	} else if len(msg) > 7 && msg[:7] == "rename|" { //约定重命名格式：rename|newName
 		newName := strings.Split(msg, "|")[1] //含义是将msg以 | 为分隔符分割成一个字符串数组，然后取下标为1的元素
 
 		// 判断name是否存在
@@ -87,9 +87,33 @@ func (this *User) DoMsg(msg string) {
 			this.Name = newName
 			this.SendMsg("您已成功更新用户名：" + this.Name + "\n")
 		}
+	} else if len(msg) > 4 && msg[:3] == "to|" { //约定发送私聊信息的格式：to|发送对象的用户名|内容
+
+		// 1.获取对方用户名
+		remoteName := strings.Split(msg, "|")[1]
+		if remoteName == "" {
+			this.SendMsg("格式错误，请重新输入~\n")
+			return
+		}
+
+		// 2.根据用户名得到对方的User对象
+		remoteUser, ok := this.server.OnlineMap[remoteName]
+		if !ok {
+			this.SendMsg("该用户不存在~\n")
+			return
+		}
+
+		// 3.获取消息内容，通过对方的User对象将消息内容发送过去
+		content := strings.Split(msg, "|")[2]
+		if content == "" {
+			this.SendMsg("内容为空，请重新编辑~\n")
+			return
+		}
+		remoteUser.SendMsg(this.Name + ":" + content)
 	} else {
 		this.server.BroadCast(this, msg)
 	}
+
 }
 
 // 监听当前user通道的方法，一旦有消息就发送给客户端
