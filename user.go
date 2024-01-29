@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 type User struct {
 	Name string
@@ -57,7 +60,7 @@ func (this *User) SendMsg(msg string) {
 	this.Conn.Write([]byte(msg))
 }
 
-//处理消息业务
+// 处理消息业务
 func (this *User) DoMsg(msg string) {
 	if msg == "who" {
 		// 查询当前在线的用户
@@ -68,6 +71,22 @@ func (this *User) DoMsg(msg string) {
 		}
 
 		this.server.mapLock.Unlock()
+	} else if len(msg) > 7 && msg == "rename|" { //约定重命名格式：rename|newName
+		newName := strings.Split(msg, "|")[1] //含义是将msg以 | 为分隔符分割成一个字符串数组，然后取下标为1的元素
+
+		// 判断name是否存在
+		_, ok := this.server.OnlineMap[newName]
+		if ok {
+			this.SendMsg("当前用户名已被使用\n")
+		} else {
+			this.server.mapLock.Lock()
+			delete(this.server.OnlineMap, this.Name)
+			this.server.OnlineMap[newName] = this
+			this.server.mapLock.Unlock()
+
+			this.Name = newName
+			this.SendMsg("您已成功更新用户名：" + this.Name + "\n")
+		}
 	} else {
 		this.server.BroadCast(this, msg)
 	}
